@@ -92,10 +92,7 @@ namespace ExactImporterLib
 			}
 
 			// File exists (existed or was just copied), verify contents
-			var srcBytes = File.ReadAllBytes(srcPath);
-			var dstBytes = File.ReadAllBytes(dstPath);
-
-			if (!ArrayEquals(srcBytes, dstBytes))
+			if (!FileEquals(srcPath, dstPath))
 			{
 				return new FileResult
 				{
@@ -115,14 +112,57 @@ namespace ExactImporterLib
 			};
 		}
 
-		private bool ArrayEquals(byte[] a, byte[] b)
+		private bool FileEquals(string pathA, string pathB)
+		{
+			FileInfo infoA = new FileInfo(pathA);
+			FileInfo infoB = new FileInfo(pathB);
+			if (infoA.Length != infoB.Length)
+			{
+				return false;
+			}
+
+			const int ChunkSize = 1024 * 1000;
+			byte[] bufferA = new byte[ChunkSize];
+			byte[] bufferB = new byte[ChunkSize];
+
+			using (Stream a = new FileStream(pathA, FileMode.Open, FileAccess.Read))
+			using (Stream b = new FileStream(pathB, FileMode.Open, FileAccess.Read))
+			{
+				for (;;)
+				{
+					// Read the same amount of bytes from both files
+					int readA = a.Read(bufferA, 0, bufferA.Length);
+					int readB = b.Read(bufferB, 0, bufferB.Length);
+
+					// Not same byte count read - differs
+					if (readA != readB)
+						return false;
+
+					// End of file without finding differences - matching!
+					if (readA == 0)
+						return true;
+
+					// Contents don't match
+					if (!ArrayEquals(bufferA, bufferB, readA))
+						return false;
+				}
+			}
+		}
+
+		private bool ArrayEquals(byte[] a, byte[] b, int compareLength)
 		{
 			if (a == null || b == null)
 				return false;
 			if (a.Length != b.Length)
 				return false;
 
-			return a.SequenceEqual(b);
+			for (int i=0; i < compareLength; i++)
+			{
+				if (a[i] != b[i])
+					return false;
+			}
+
+			return true;
 		}
 
 		public ImporterResult Import()
