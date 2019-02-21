@@ -18,7 +18,7 @@ namespace ExactImporter
 			string targetPath = args[0];
 			string[] sourcePaths = args.Skip(1).ToArray();
 
-			string[] extensionsWithDot = { ".jpg", ".rw2" /* panasonic raw */, ".mp4", ".avi", ".mov", ".cr2" /* canon raw */, ".log" /* magic lantern movie log */ };
+			string[] extensionsWithDot = { ".jpg", ".rw2" /* panasonic raw */, ".mp4", ".avi", ".mov", ".cr2" /* canon raw */, ".log", ".mlv", ".idx" /* magic lantern movie log,raw,index */ };
 
 			ImporterConfig config = new ImporterConfig
 			{

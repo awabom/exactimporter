@@ -32,12 +32,20 @@ namespace ExactImporterLib
 		public bool Failure { get; set; }
 		public string FileSourcePath { get; set; }
 		public string FileDestinationPath { get; set; }
+		public FileActionTaken ActionTaken { get; set; }
 		public FileResultCode ResultCode { get; set; }
 
 		public string ToDisplayString()
 		{
-			return FileSourcePath + " " + ResultCode + " " + FileDestinationPath + (Failure ? "(failure!)" : " (ok)");
+			return FileSourcePath + " " + ActionTaken + ", " + ResultCode + " " + FileDestinationPath + (Failure ? "(failure!)" : " (ok)");
 		}
+	}
+
+	public enum FileActionTaken
+	{
+		None,
+		Existed,
+		Copied
 	}
 
 	public enum NonExisting
@@ -46,6 +54,8 @@ namespace ExactImporterLib
 		Copy,
 		Skip
 	}
+
+
 
 	public class Importer
 	{
@@ -60,6 +70,8 @@ namespace ExactImporterLib
 
 		private FileResult ImportVerify(string srcPath, string dstPath)
 		{
+			FileActionTaken actionTaken;
+
 			// If destination does not exist - handle according to config.NonExisting mode
 			if (!File.Exists(dstPath))
 			{
@@ -71,10 +83,12 @@ namespace ExactImporterLib
 							Failure = true,
 							FileSourcePath = srcPath,
 							FileDestinationPath = dstPath,
+							ActionTaken = FileActionTaken.None,
 							ResultCode = FileResultCode.MissingInDestination
 						};
 					case NonExisting.Copy:
 						File.Copy(srcPath, dstPath);
+						actionTaken = FileActionTaken.Copied;
 						break;
 					case NonExisting.Skip:
 						// Return a non-failure, but 'missing' status
@@ -83,12 +97,16 @@ namespace ExactImporterLib
 							Failure = false,
 							FileSourcePath = srcPath,
 							FileDestinationPath = dstPath,
+							ActionTaken = FileActionTaken.None,
 							ResultCode = FileResultCode.MissingInDestination
 						};
 					default:
 						throw new NotImplementedException("NonExisting." + _config.NonExisting + " not implemented");
 				}
-
+			}
+			else
+			{
+				actionTaken = FileActionTaken.Existed;
 			}
 
 			// File exists (existed or was just copied), verify contents
@@ -99,6 +117,7 @@ namespace ExactImporterLib
 					Failure = true,
 					FileSourcePath = srcPath,
 					FileDestinationPath = dstPath,
+					ActionTaken = actionTaken,
 					ResultCode = FileResultCode.ContentsDifferent
 				};
 			}
@@ -108,6 +127,7 @@ namespace ExactImporterLib
 				Failure = false,
 				FileSourcePath = srcPath,
 				FileDestinationPath = dstPath,
+				ActionTaken = actionTaken,
 				ResultCode = FileResultCode.Matched
 			};
 		}
