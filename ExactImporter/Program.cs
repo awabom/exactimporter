@@ -25,7 +25,8 @@ namespace ExactImporter
 				ImportExtensionsWithDot = new HashSet<string>(extensionsWithDot),
 				TargetPath = targetPath,
 				SourcePaths = new List<string>(sourcePaths),
-				NonExisting = NonExisting.Copy
+				NonExisting = NonExisting.Copy,
+				CompareAction = CompareAction.Attributes
 			};
 			Importer importer = new Importer(config);
 			var result = importer.Import();

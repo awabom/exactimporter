@@ -12,6 +12,7 @@ namespace ExactImporterLib
 		public List<string> SourcePaths { get; set; }
 		public HashSet<string> ImportExtensionsWithDot { get; set; }
 
+		public CompareAction CompareAction { get; set; }
 		public NonExisting NonExisting { get; set; }
 	}
 
@@ -20,11 +21,20 @@ namespace ExactImporterLib
 		public List<FileResult> FileResults { get; set; }
 	}
 
+	public enum CompareAction
+	{
+		None = 0,
+		Attributes = 1,
+		Contents = 2,
+		AttributesAndContents = Attributes | Contents
+	}
+
 	public enum FileResultCode
 	{
 		Matched,
 		MissingInDestination,
-		ContentsDifferent
+		ContentsDifferent,
+		AttributesDifferent
 	}
 
 	public class FileResult
@@ -63,7 +73,7 @@ namespace ExactImporterLib
 
 		public Importer(ImporterConfig config)
 		{
-			if (config == null) throw new ArgumentNullException("config");
+			if (config == null) throw new ArgumentNullException(nameof(config));
 			_config = config;
 		}
 
@@ -109,8 +119,20 @@ namespace ExactImporterLib
 				actionTaken = FileActionTaken.Existed;
 			}
 
-			// File exists (existed or was just copied), verify contents
-			if (!FileEquals(srcPath, dstPath))
+			if ((_config.CompareAction & CompareAction.Attributes) != 0 && !FileAttributesEquals(srcPath, dstPath))
+			{
+				return new FileResult
+				{
+					Failure = true,
+					FileSourcePath = srcPath,
+					FileDestinationPath = dstPath,
+					ActionTaken = actionTaken,
+					ResultCode = FileResultCode.AttributesDifferent
+				};
+			}
+
+			// File exists (existed or was just copied), verify contents (if enabled)
+			if ((_config.CompareAction & CompareAction.Contents) != 0 && !FileContentsEquals(srcPath, dstPath))
 			{
 				return new FileResult
 				{
@@ -132,16 +154,16 @@ namespace ExactImporterLib
 			};
 		}
 
-		private bool FileEquals(string pathA, string pathB)
+		private bool FileAttributesEquals(string pathA, string pathB)
 		{
-			FileInfo infoA = new FileInfo(pathA);
-			FileInfo infoB = new FileInfo(pathB);
-			if (infoA.Length != infoB.Length)
-			{
-				return false;
-			}
+			var infoA = new FileInfo(pathA);
+			var infoB = new FileInfo(pathB);
+			return infoA.Length == infoB.Length;
+		}
 
-			const int ChunkSize = 1024 * 1000;
+		private bool FileContentsEquals(string pathA, string pathB)
+		{
+			const int ChunkSize = 1024 * 1024 * 10; // 10 MB
 			byte[] bufferA = new byte[ChunkSize];
 			byte[] bufferB = new byte[ChunkSize];
 
@@ -171,11 +193,6 @@ namespace ExactImporterLib
 
 		private bool ArrayEquals(byte[] a, byte[] b, int compareLength)
 		{
-			if (a == null || b == null)
-				return false;
-			if (a.Length != b.Length)
-				return false;
-
 			for (int i=0; i < compareLength; i++)
 			{
 				if (a[i] != b[i])
