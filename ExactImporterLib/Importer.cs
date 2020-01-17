@@ -78,8 +78,10 @@ namespace ExactImporterLib
 		}
 
 
-		private FileResult ImportVerify(string srcPath, string dstPath)
+		private FileResult ImportVerify(FileInfo srcInfo, string dstPath)
 		{
+			string srcPath = srcInfo.FullName;
+			
 			FileActionTaken actionTaken;
 
 			// If destination does not exist - handle according to config.NonExisting mode
@@ -119,7 +121,7 @@ namespace ExactImporterLib
 				actionTaken = FileActionTaken.Existed;
 			}
 
-			if ((_config.CompareAction & CompareAction.Attributes) != 0 && !FileAttributesEquals(srcPath, dstPath))
+			if ((_config.CompareAction & CompareAction.Attributes) != 0 && !FileAttributesEquals(srcInfo, dstPath))
 			{
 				return new FileResult
 				{
@@ -154,9 +156,8 @@ namespace ExactImporterLib
 			};
 		}
 
-		private bool FileAttributesEquals(string pathA, string pathB)
+		private bool FileAttributesEquals(FileInfo infoA, string pathB)
 		{
-			var infoA = new FileInfo(pathA);
 			var infoB = new FileInfo(pathB);
 			return infoA.Length == infoB.Length;
 		}
@@ -208,12 +209,11 @@ namespace ExactImporterLib
 
 			foreach (DirectoryInfo srcDir in _config.SourcePaths.Select(x => new DirectoryInfo(x)))
 			{
-				foreach (FileInfo fileInfo in srcDir.GetFiles("*", SearchOption.AllDirectories).Where(x => _config.ImportExtensionsWithDot.Contains(x.Extension.ToLowerInvariant())))
+				foreach (FileInfo srcInfo in srcDir.GetFiles("*", SearchOption.AllDirectories).Where(x => _config.ImportExtensionsWithDot.Contains(x.Extension.ToLowerInvariant())))
 				{
-					string srcPath = fileInfo.FullName;
-					string dstPath = GetDestinationPath(fileInfo);
+					string dstPath = GetDestinationPath(srcInfo);
 
-					FileResult fileResult = ImportVerify(srcPath, dstPath);
+					FileResult fileResult = ImportVerify(srcInfo, dstPath);
 					Console.WriteLine(fileResult.ToDisplayString());
 					result.FileResults.Add(fileResult);
 				}
